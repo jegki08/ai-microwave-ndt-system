@@ -404,14 +404,15 @@ def extract_features_from_bscan(
     # Feature 2: Defect to frontwall ratio (contrast relative to front reflection)
     defect_to_front_ratio = float(max_amp / norm_factor)
 
-    # Feature 3: Backwall drop ratio (spatially smoothed to suppress single-point noise spikes)
+    # Feature 3: Backwall drop ratio (spatially smoothed with edge padding to eliminate boundary artifacts)
     backwall_profile = np.max(np.abs(b_scan[:, max(0, back_idx - 10) : min(n_times, back_idx + 10)]), axis=1)
     if len(backwall_profile) >= 3:
-        bw_smooth = np.convolve(backwall_profile, np.array([0.2, 0.6, 0.2]), mode="same")
+        pad_b = np.pad(backwall_profile, 1, mode="edge")
+        bw_smooth = np.convolve(pad_b, np.array([0.2, 0.6, 0.2]), mode="valid")
     else:
         bw_smooth = backwall_profile
 
-    baseline_backwall = float(np.percentile(bw_smooth, 80))
+    baseline_backwall = float(np.percentile(bw_smooth, 85))
     min_backwall = float(np.min(bw_smooth))
     backwall_drop = float(1.0 - (min_backwall / (baseline_backwall + 1e-6)))
     backwall_drop = float(np.clip(backwall_drop, 0.0, 1.0))
@@ -421,11 +422,11 @@ def extract_features_from_bscan(
     shadow_idx = int(np.argmax(bw_deficit))
     shadow_peak_lateral_x = float(scan_positions[shadow_idx])
 
-    # Feature 4: Peak anomaly lateral position from smoothed envelope profile
+    # Feature 4: Peak anomaly lateral position from edge-padded smoothed envelope profile
     spatial_prof_raw = np.max(defect_env_window, axis=1)
     if len(spatial_prof_raw) >= 3:
-        kernel = np.array([0.2, 0.6, 0.2])
-        spatial_prof_smooth = np.convolve(spatial_prof_raw, kernel, mode="same")
+        pad_s = np.pad(spatial_prof_raw, 1, mode="edge")
+        spatial_prof_smooth = np.convolve(pad_s, np.array([0.2, 0.6, 0.2]), mode="valid")
     else:
         spatial_prof_smooth = spatial_prof_raw
 
@@ -441,7 +442,7 @@ def extract_features_from_bscan(
     delta_t = max(0.0, peak_time_ns - tau_front_time)
     inferred_depth_mm = float(np.clip(0.5 * delta_t * v_mat, 0.0, material_thickness_mm))
 
-    # Feature 7: True contiguous spatial FWHM around anomaly peak (baseline-subtracted)
+    # Feature 7: Boundary-aware spatial FWHM around anomaly peak (reconstructs truncated wings at scan edges)
     pk_val = spatial_prof_smooth[scan_idx_peak]
     noise_floor = float(np.percentile(spatial_prof_smooth, 30))
     half_val = noise_floor + 0.5 * max(1e-4, pk_val - noise_floor)
@@ -451,7 +452,17 @@ def extract_features_from_bscan(
     r_idx = scan_idx_peak
     while r_idx < len(spatial_prof_smooth) - 1 and spatial_prof_smooth[r_idx] >= half_val:
         r_idx += 1
-    spatial_fwhm_mm = float(scan_positions[r_idx] - scan_positions[l_idx])
+
+    left_truncated = (l_idx == 0 and spatial_prof_smooth[0] >= half_val)
+    right_truncated = (r_idx == len(spatial_prof_smooth) - 1 and spatial_prof_smooth[-1] >= half_val)
+
+    if left_truncated and not right_truncated:
+        spatial_fwhm_mm = 2.0 * float(scan_positions[r_idx] - scan_positions[scan_idx_peak])
+    elif right_truncated and not left_truncated:
+        spatial_fwhm_mm = 2.0 * float(scan_positions[scan_idx_peak] - scan_positions[l_idx])
+    else:
+        spatial_fwhm_mm = float(scan_positions[r_idx] - scan_positions[l_idx])
+    spatial_fwhm_mm = float(np.clip(spatial_fwhm_mm, 2.0, 35.0))
 
     # Feature 8: Standard deviation
     waveform_std = float(np.std(defect_diff_window))
