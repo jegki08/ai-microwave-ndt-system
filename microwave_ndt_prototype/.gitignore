@@ -1,0 +1,46 @@
+# =====================================================================
+# Git Ignore Configuration for Microwave NDT Prototype
+# =====================================================================
+
+# --- Virtual Environments ---
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# --- Python Bytecode & Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# --- Streamlit Local Cache & Secrets ---
+.streamlit/secrets.toml
+.streamlit/cache/
+
+# --- Operating System Files ---
+.DS_Store
+Thumbs.db
+[Dd]esktop.ini
+
+# --- IDE & Editor Settings ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- Logs & Temporary Files ---
+*.log
+*.tmp
+*.bak
+
+# --- Large Datasets ---
+*.npz
+*.h5
+
+# --- Keep Required Trained Models for Deployment ---
+!models/*.joblib

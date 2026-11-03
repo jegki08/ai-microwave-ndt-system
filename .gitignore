@@ -1,0 +1,58 @@
+
+# --- Virtual Environments (Never push local binary environments) ---
+.venv/
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+python*/
+
+# --- Python Bytecode & Cache ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+.Python
+
+# --- Streamlit Secrets & Local Cache ---
+.streamlit/secrets.toml
+.streamlit/cache/
+
+# --- Operating System Artifacts ---
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+[Dd]esktop.ini
+
+# --- IDE & Code Editors ---
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+*.swp
+*.swo
+*~
+
+# --- Logs & Temporary Files ---
+*.log
+*.tmp
+*.bak
+*.swp
+scratch/
+
+# --- Large Raw Datasets (if generated locally) ---
+*.npz
+*.h5
+*.hdf5
+*.parquet
+
+# --- Keep Required Trained Models for Deployment ---
+# Ensure pre-trained weights are pushed so Streamlit Cloud runs instantly
+!models/*.joblib
+!microwave_ndt_prototype/models/*.joblib
