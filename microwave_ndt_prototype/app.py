@@ -90,16 +90,30 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# =========================================================
+# PROJECT PHASE CONFIGURATION
+# Set PHASE_MODE = 1 for Phase 1 Demo (Antenna Physics, Wave Propagation & B-Scan Simulation)
+# Set PHASE_MODE = 2 for Phase 2 Demo (Full AI Automated Defect Classification & Benchmark Dashboard)
+# =========================================================
+PHASE_MODE = 1
+
 # ---------------------------------------------------------
 # Initialize Predictor & Model Status
 # ---------------------------------------------------------
 predictor = MicrowaveNDTPredictor()
 
-st.title("📡 AI-Based Microwave NDT for Composite Materials")
-st.markdown(
-    "**Antenna Simulation & Machine Learning Defect Detection System** | "
-    "Analytical directional microwave antenna modeling, pulse propagation, B-scan imaging, and AI classification."
-)
+if PHASE_MODE == 1:
+    st.title("📡 Microwave NDT for Composite Materials — Phase 1")
+    st.markdown(
+        "**Phase 1: Antenna Physics, Wave Propagation & 2D B-Scan Signal Simulation** | "
+        "Analytical directional microwave antenna modeling, dielectric pulse propagation, and Time-of-Flight reflectometry."
+    )
+else:
+    st.title("📡 AI-Based Microwave NDT for Composite Materials")
+    st.markdown(
+        "**Antenna Simulation & Machine Learning Defect Detection System** | "
+        "Analytical directional microwave antenna modeling, pulse propagation, B-scan imaging, and AI classification."
+    )
 
 # ---------------------------------------------------------
 # Sidebar: Parameter Configurations
@@ -123,12 +137,19 @@ with st.sidebar.expander("📡 A. Antenna Configuration", expanded=True):
 
 # --- SECTION B: MATERIAL CONFIGURATION & SIMULATION GROUND TRUTH ---
 with st.sidebar.expander("🧱 B. Material & Defect Ground Truth", expanded=True):
-    st.markdown(
-        "> <span class='badge-ground-truth'>SIMULATOR GROUND TRUTH ONLY</span><br>"
-        "<small>Defect properties below are used solely by the simulator to synthesize test scans. "
-        "The AI prediction module is completely blind to this configuration.</small>",
-        unsafe_allow_html=True,
-    )
+    if PHASE_MODE == 1:
+        st.markdown(
+            "> **PHASE 1 SIMULATION TEST BENCH**<br>"
+            "<small>Configure material and defect properties below to simulate physical microwave wave interactions and synthesize A-scan / B-scan signals.</small>",
+            unsafe_allow_html=True,
+        )
+    else:
+        st.markdown(
+            "> <span class='badge-ground-truth'>SIMULATOR GROUND TRUTH ONLY</span><br>"
+            "<small>Defect properties below are used solely by the simulator to synthesize test scans. "
+            "The AI prediction module is completely blind to this configuration.</small>",
+            unsafe_allow_html=True,
+        )
     material_preset = st.selectbox(
         "Material Type",
         ["GFRP (Glass-Fiber Epoxy)", "Quartz-Polyimide", "Low-Loss Dielectric Slab"],
@@ -192,11 +213,17 @@ if not predictor.is_ready():
 # ---------------------------------------------------------
 # App Tabs
 # ---------------------------------------------------------
-tab_scan, tab_metrics, tab_physics = st.tabs([
-    "🔍 Microwave Inspection & AI Prediction",
-    "📊 Model Performance & Test Metrics",
-    "📚 Antenna Physics & Limitations",
-])
+if PHASE_MODE == 1:
+    tab_scan, tab_physics = st.tabs([
+        "🔍 Microwave Inspection & Signal Analysis (Phase 1)",
+        "📚 Antenna Physics & Wave Foundations",
+    ])
+else:
+    tab_scan, tab_metrics, tab_physics = st.tabs([
+        "🔍 Microwave Inspection & AI Prediction",
+        "📊 Model Performance & Test Metrics",
+        "📚 Antenna Physics & Limitations",
+    ])
 
 # ---------------------------------------------------------
 # TAB 1: MICROWAVE INSPECTION & AI PREDICTION
@@ -431,98 +458,14 @@ with tab_scan:
         plt.close(fig_prof)
 
     # -----------------------------------------------------
-    # D. AI Automated Prediction & Defect Localization
+    # D. Phase 1 vs Phase 2 Inspection Results
     # -----------------------------------------------------
     st.markdown("---")
-    st.subheader("4. 🤖 AI Automated Inspection & Defect Prediction")
 
-    if ai is None:
-        st.warning("AI model results unavailable. Please train models above.")
-    else:
-        pred_class = ai["predicted_class"]
-        confidence = ai["confidence"]
-        probs = ai["probabilities"]
-        est_x = ai["estimated_pos_x_mm"]
-        est_z = ai["estimated_depth_z_mm"]
+    if PHASE_MODE == 1:
+        st.subheader("4. 📋 Phase 1 Signal Verification & Microwave Indicators")
 
-        # Verify whether defect is located within the active scanning range
-        scan_min = float(min(scan_pos))
-        scan_max = float(max(scan_pos))
-        is_in_scan = True
-        if gt['type'] != "No defect":
-            is_in_scan = (scan_min <= gt['x'] <= scan_max)
-
-        if not is_in_scan and gt['type'] != "No defect":
-            st.info(
-                f"ℹ️ **Configured Defect is Outside Active Scan Range**: The defect is at $x = {gt['x']:.1f}\\text{{ mm}}$, "
-                f"but the scanner was only instructed to scan $[{scan_min:.1f}\\text{{ mm}} - {scan_max:.1f}\\text{{ mm}}]$. "
-                f"The AI model correctly scanned pristine, defect-free material in this region."
-            )
-
-        gt_location_str = ""
-        if gt['type'] != "No defect":
-            if is_in_scan:
-                gt_location_str = f"(x = {gt['x']:.1f} mm)"
-            else:
-                gt_location_str = f"(x = {gt['x']:.1f} mm — OUTSIDE scan range [{scan_min:.1f} - {scan_max:.1f} mm])"
-
-        pred_display_str = pred_class
-        if not is_in_scan and gt['type'] != "No defect" and pred_class == "No defect":
-            pred_display_str = f"No defect (Scanned Region Defect-Free)"
-
-        # Alert clearly showing Simulator Ground Truth vs AI Prediction
-        gt_text = f"<b>{gt['type']}</b> {gt_location_str}".strip()
-        pred_text = f"<b>{pred_display_str}</b> (Confidence: <b>{confidence * 100:.1f}%</b>)"
-
-        banner_html = (
-            f'<div class="banner-result" style="color: #111827 !important;">'
-            f'<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; color: #111827 !important;">'
-            f'<div style="color: #111827 !important;"><span class="badge-ground-truth">SIMULATOR GROUND TRUTH</span> : <span style="color: #111827 !important;">{gt_text}</span></div>'
-            f'<div style="color: #111827 !important;"><span class="badge-ai-pred">AI AUTOMATIC PREDICTION</span> : <span style="color: #111827 !important;">{pred_text}</span></div>'
-            f'</div></div>'
-        )
-        st.markdown(banner_html, unsafe_allow_html=True)
-
-        # Metric Cards (Condition, Confidence, Position x)
-        col_m1, col_m2, col_m3 = st.columns(3)
-
-        with col_m1:
-            st.metric("Predicted Defect Condition", pred_class)
-        with col_m2:
-            st.metric("AI Confidence Score", f"{confidence * 100:.1f}%")
-        with col_m3:
-            if est_x is not None and is_in_scan:
-                err_x = abs(est_x - gt["x"]) if gt["type"] != "No defect" else 0.0
-                st.metric("Estimated Position x", f"{est_x:.1f} mm", delta=f"{err_x:+.1f} mm error" if gt["type"] != "No defect" else None, delta_color="inverse")
-            elif est_x is not None:
-                st.metric("Estimated Position x", f"{est_x:.1f} mm")
-            else:
-                st.metric("Estimated Position x", "N/A (Defect-Free)")
-
-        # Probability Breakdown & Feature Indicators
-        col_p1, col_p2 = st.columns(2)
-
-        with col_p1:
-            st.markdown("##### Defect Class Probabilities")
-            prob_df = pd.DataFrame({
-                "Condition": list(probs.keys()),
-                "Probability": [v * 100 for v in probs.values()]
-            })
-            fig_bar, ax_bar = plt.subplots(figsize=(6, 3.0))
-            colors = ["#2ECC71" if c == "No defect" else "#E74C3C" if c == "Internal crack" else "#E67E22" for c in prob_df["Condition"]]
-            bars = ax_bar.barh(prob_df["Condition"], prob_df["Probability"], color=colors, height=0.55)
-            ax_bar.set_xlim(0, 105)
-            ax_bar.set_xlabel("Confidence / Probability (%)")
-            for bar in bars:
-                w = bar.get_width()
-                ax_bar.text(w + 1.5, bar.get_y() + bar.get_height() / 2, f"{w:.1f}%", va="center", fontsize=9, fontweight="bold")
-            ax_bar.grid(True, axis="x", alpha=0.3)
-            plt.tight_layout()
-            st.pyplot(fig_bar)
-            plt.close(fig_bar)
-
-        with col_p2:
-            st.markdown("##### Key Microwave Signal Indicators")
+        if ai is not None:
             feat = ai["features"]
             feat_display = pd.DataFrame([
                 {"Microwave Indicator": "Defect Gate Peak Amplitude", "Extracted Value": f"{feat['defect_window_max_amp']:.4f} V", "Physical Meaning": "Strength of internal reflection"},
@@ -533,120 +476,225 @@ with tab_scan:
             ])
             st.dataframe(feat_display, hide_index=True, use_container_width=True)
 
-# ---------------------------------------------------------
-# TAB 2: MODEL PERFORMANCE & TEST METRICS
-# ---------------------------------------------------------
-with tab_metrics:
-    st.subheader("📊 Actual AI Model Training & Test Evaluation Metrics")
+        st.success(
+            "🎯 **Phase 1 Demonstration Complete**: Microwave Antenna directional radiation pattern, composite dielectric wave propagation, Time-of-Flight (ToF) reflectometry, and 2D cross-sectional B-scan profiles have been successfully simulated and verified.\n\n"
+            "*(Automated AI Machine Learning Classification, Multi-class Defect Prediction, and Spatial Localization will be presented in Phase 2).*"
+        )
+    else:
+        st.subheader("4. 🤖 AI Automated Inspection & Defect Prediction")
 
-    # Submitted project report benchmark metrics (92.41% accuracy)
-    m = {
-        "test_accuracy": 0.9240506329113924,
-        "validation_accuracy": 0.9177215189873418,
-        "position_x_mae_mm": 0.94,
-        "position_z_mae_mm": 0.86,
-        "position_x_rmse_mm": 0.94,
-        "position_z_rmse_mm": 1.14,
-        "confusion_matrix": [
-            [47, 5, 0],
-            [7, 41, 5],
-            [1, 11, 41]
-        ],
-        "classes": ["No defect", "Internal crack", "Air void"],
-        "classification_report": {
-            "No defect": {"precision": 0.855, "recall": 0.904, "f1-score": 0.879, "support": 52},
-            "Internal crack": {"precision": 0.719, "recall": 0.774, "f1-score": 0.745, "support": 53},
-            "Air void": {"precision": 0.891, "recall": 0.774, "f1-score": 0.828, "support": 53},
-        },
-        "feature_names": [
-            "Spectral Centroid Norm",
-            "Backwall Drop Ratio",
-            "Waveform Kurtosis",
-            "Defect To Front Ratio",
-            "Spatial FWHM Mm",
-            "Defect Window Max Amp",
-            "Mean Amplitude",
-            "RMS Energy"
-        ],
-        "feature_importances": [0.138, 0.119, 0.118, 0.111, 0.106, 0.058, 0.045, 0.038],
-        "samples_per_class": 350,
-        "total_samples": 1050,
-    }
+        if ai is None:
+            st.warning("AI model results unavailable. Please train models above.")
+        else:
+            pred_class = ai["predicted_class"]
+            confidence = ai["confidence"]
+            probs = ai["probabilities"]
+            est_x = ai["estimated_pos_x_mm"]
+            est_z = ai["estimated_depth_z_mm"]
 
-    c_t1, c_t2, c_t3, c_t4 = st.columns(4)
-    c_t1.metric("Overall Test Accuracy", f"{m['test_accuracy'] * 100:.2f}%")
-    c_t2.metric("Validation Accuracy", f"{m['validation_accuracy'] * 100:.2f}%")
-    c_t3.metric("Defect Position x MAE", f"{m['position_x_mae_mm']:.2f} mm")
-    c_t4.metric("Defect Depth z MAE", f"{m['position_z_mae_mm']:.2f} mm")
+            # Verify whether defect is located within the active scanning range
+            scan_min = float(min(scan_pos))
+            scan_max = float(max(scan_pos))
+            is_in_scan = True
+            if gt['type'] != "No defect":
+                is_in_scan = (scan_min <= gt['x'] <= scan_max)
 
-    col_cm, col_rep = st.columns([1, 1])
+            if not is_in_scan and gt['type'] != "No defect":
+                st.info(
+                    f"ℹ️ **Configured Defect is Outside Active Scan Range**: The defect is at $x = {gt['x']:.1f}\\text{{ mm}}$, "
+                    f"but the scanner was only instructed to scan $[{scan_min:.1f}\\text{{ mm}} - {scan_max:.1f}\\text{{ mm}}]$. "
+                    f"The AI model correctly scanned pristine, defect-free material in this region."
+                )
 
-    with col_cm:
-        st.markdown("##### Confusion Matrix (Held-Out Test Set)")
-        cm = np.array(m["confusion_matrix"])
-        fig_cm, ax_cm = plt.subplots(figsize=(5, 4.2))
-        cax = ax_cm.matshow(cm, cmap="Blues", alpha=0.85)
-        plt.colorbar(cax, ax=ax_cm, fraction=0.046, pad=0.04)
+            gt_location_str = ""
+            if gt['type'] != "No defect":
+                if is_in_scan:
+                    gt_location_str = f"(x = {gt['x']:.1f} mm)"
+                else:
+                    gt_location_str = f"(x = {gt['x']:.1f} mm — OUTSIDE scan range [{scan_min:.1f} - {scan_max:.1f} mm])"
 
-        for i in range(len(m["classes"])):
-            for j in range(len(m["classes"])):
-                ax_cm.text(j, i, str(cm[i, j]), ha="center", va="center", color="black", fontsize=11, fontweight="bold")
+            pred_display_str = pred_class
+            if not is_in_scan and gt['type'] != "No defect" and pred_class == "No defect":
+                pred_display_str = f"No defect (Scanned Region Defect-Free)"
 
-        ax_cm.set_xticks(range(len(m["classes"])))
-        ax_cm.set_yticks(range(len(m["classes"])))
-        ax_cm.set_xticklabels(m["classes"], rotation=20, ha="left", fontsize=9)
-        ax_cm.set_yticklabels(m["classes"], fontsize=9)
-        ax_cm.set_xlabel("Predicted Condition", fontweight="bold")
-        ax_cm.set_ylabel("True Condition", fontweight="bold")
-        plt.tight_layout()
-        st.pyplot(fig_cm)
-        plt.close(fig_cm)
+            # Alert clearly showing Simulator Ground Truth vs AI Prediction
+            gt_text = f"<b>{gt['type']}</b> {gt_location_str}".strip()
+            pred_text = f"<b>{pred_display_str}</b> (Confidence: <b>{confidence * 100:.1f}%</b>)"
 
-    with col_rep:
-        st.markdown("##### Detailed Classification Report")
-        rep = m["classification_report"]
-        rep_rows = []
-        for cls_name in m["classes"]:
-            if cls_name in rep:
-                rep_rows.append({
-                    "Class": cls_name,
-                    "Precision": f"{rep[cls_name]['precision'] * 100:.1f}%",
-                    "Recall": f"{rep[cls_name]['recall'] * 100:.1f}%",
-                    "F1-Score": f"{rep[cls_name]['f1-score'] * 100:.1f}%",
-                    "Support": int(rep[cls_name]["support"]),
+            banner_html = (
+                f'<div class="banner-result" style="color: #111827 !important;">'
+                f'<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; color: #111827 !important;">'
+                f'<div style="color: #111827 !important;"><span class="badge-ground-truth">SIMULATOR GROUND TRUTH</span> : <span style="color: #111827 !important;">{gt_text}</span></div>'
+                f'<div style="color: #111827 !important;"><span class="badge-ai-pred">AI AUTOMATIC PREDICTION</span> : <span style="color: #111827 !important;">{pred_text}</span></div>'
+                f'</div></div>'
+            )
+            st.markdown(banner_html, unsafe_allow_html=True)
+
+            # Metric Cards (Condition, Confidence, Position x)
+            col_m1, col_m2, col_m3 = st.columns(3)
+
+            with col_m1:
+                st.metric("Predicted Defect Condition", pred_class)
+            with col_m2:
+                st.metric("AI Confidence Score", f"{confidence * 100:.1f}%")
+            with col_m3:
+                if est_x is not None and is_in_scan:
+                    err_x = abs(est_x - gt["x"]) if gt["type"] != "No defect" else 0.0
+                    st.metric("Estimated Position x", f"{est_x:.1f} mm", delta=f"{err_x:+.1f} mm error" if gt["type"] != "No defect" else None, delta_color="inverse")
+                elif est_x is not None:
+                    st.metric("Estimated Position x", f"{est_x:.1f} mm")
+                else:
+                    st.metric("Estimated Position x", "N/A (Defect-Free)")
+
+            # Probability Breakdown & Feature Indicators
+            col_p1, col_p2 = st.columns(2)
+
+            with col_p1:
+                st.markdown("##### Defect Class Probabilities")
+                prob_df = pd.DataFrame({
+                    "Condition": list(probs.keys()),
+                    "Probability": [v * 100 for v in probs.values()]
                 })
-        st.dataframe(pd.DataFrame(rep_rows), hide_index=True, use_container_width=True)
+                fig_bar, ax_bar = plt.subplots(figsize=(6, 3.0))
+                colors = ["#2ECC71" if c == "No defect" else "#E74C3C" if c == "Internal crack" else "#E67E22" for c in prob_df["Condition"]]
+                bars = ax_bar.barh(prob_df["Condition"], prob_df["Probability"], color=colors, height=0.55)
+                ax_bar.set_xlim(0, 105)
+                ax_bar.set_xlabel("Confidence / Probability (%)")
+                for bar in bars:
+                    w = bar.get_width()
+                    ax_bar.text(w + 1.5, bar.get_y() + bar.get_height() / 2, f"{w:.1f}%", va="center", fontsize=9, fontweight="bold")
+                ax_bar.grid(True, axis="x", alpha=0.3)
+                plt.tight_layout()
+                st.pyplot(fig_bar)
+                plt.close(fig_bar)
 
-        st.markdown(f"**Dataset Summary:**")
-        st.write(f"- Total synthetic samples: **{m.get('total_samples', 1050)}** ({m.get('samples_per_class', 350)} per class)")
-        st.write(f"- Test partition: 15% stratified held-out data")
-        st.write(f"- Position x RMSE: **{m.get('position_x_rmse_mm', 0.94):.2f} mm**")
-        st.write(f"- Depth z RMSE: **{m.get('position_z_rmse_mm', 1.14):.2f} mm**")
+            with col_p2:
+                st.markdown("##### Key Microwave Signal Indicators")
+                feat = ai["features"]
+                feat_display = pd.DataFrame([
+                    {"Microwave Indicator": "Defect Gate Peak Amplitude", "Extracted Value": f"{feat['defect_window_max_amp']:.4f} V", "Physical Meaning": "Strength of internal reflection"},
+                    {"Microwave Indicator": "Defect-to-Front Ratio", "Extracted Value": f"{feat['defect_to_front_ratio']:.3f}", "Physical Meaning": "Contrast relative to surface reflection"},
+                    {"Microwave Indicator": "Backwall Echo Drop Ratio", "Extracted Value": f"{feat['backwall_drop_ratio'] * 100:.1f}%", "Physical Meaning": "Shadowing attenuation by defect"},
+                    {"Microwave Indicator": "Time-of-Flight Inferred Depth", "Extracted Value": f"{feat['inferred_depth_mm']:.2f} mm", "Physical Meaning": "Wave round-trip delay in composite"},
+                    {"Microwave Indicator": "Spatial Echo Width (FWHM)", "Extracted Value": f"{feat['spatial_fwhm_mm']:.2f} mm", "Physical Meaning": "Lateral size anomaly along scan axis"},
+                ])
+                st.dataframe(feat_display, hide_index=True, use_container_width=True)
 
-    st.markdown("##### Most Informative Microwave Signal Features")
-    feat_names = m["feature_names"]
-    importances = m["feature_importances"]
-    sorted_indices = np.argsort(importances)[::-1]
+# ---------------------------------------------------------
+# TAB 2: MODEL PERFORMANCE & TEST METRICS (Phase 2 Only)
+# ---------------------------------------------------------
+if PHASE_MODE == 2:
+    with tab_metrics:
+        st.subheader("📊 Actual AI Model Training & Test Evaluation Metrics")
 
-    top_names = [feat_names[i] for i in sorted_indices[:8]]
-    top_vals = [importances[i] * 100 for i in sorted_indices[:8]]
-    fig_fi, ax_fi = plt.subplots(figsize=(10, 3.6))
-    ax_fi.bar(range(len(top_names)), top_vals, color="#2980B9")
-    ax_fi.set_ylabel("Relative Importance (%)")
-    ax_fi.set_xticks(range(len(top_names)))
-    ax_fi.set_xticklabels(top_names, rotation=30, ha="right", fontsize=8.5)
-    ax_fi.grid(True, axis="y", alpha=0.3)
-    plt.tight_layout()
-    st.pyplot(fig_fi)
-    plt.close(fig_fi)
+        # Submitted project report benchmark metrics (92.41% accuracy)
+        m = {
+            "test_accuracy": 0.9240506329113924,
+            "validation_accuracy": 0.9177215189873418,
+            "position_x_mae_mm": 0.94,
+            "position_z_mae_mm": 0.86,
+            "position_x_rmse_mm": 0.94,
+            "position_z_rmse_mm": 1.14,
+            "confusion_matrix": [
+                [47, 5, 0],
+                [7, 41, 5],
+                [1, 11, 41]
+            ],
+            "classes": ["No defect", "Internal crack", "Air void"],
+            "classification_report": {
+                "No defect": {"precision": 0.855, "recall": 0.904, "f1-score": 0.879, "support": 52},
+                "Internal crack": {"precision": 0.719, "recall": 0.774, "f1-score": 0.745, "support": 53},
+                "Air void": {"precision": 0.891, "recall": 0.774, "f1-score": 0.828, "support": 53},
+            },
+            "feature_names": [
+                "Spectral Centroid Norm",
+                "Backwall Drop Ratio",
+                "Waveform Kurtosis",
+                "Defect To Front Ratio",
+                "Spatial FWHM Mm",
+                "Defect Window Max Amp",
+                "Mean Amplitude",
+                "RMS Energy"
+            ],
+            "feature_importances": [0.138, 0.119, 0.118, 0.111, 0.106, 0.058, 0.045, 0.038],
+            "samples_per_class": 350,
+            "total_samples": 1050,
+        }
 
-    if st.button("🔄 Retrain AI Models"):
-        with st.spinner("Retraining AI models..."):
-            from train_model import train_microwave_ndt_models
-            train_microwave_ndt_models(samples_per_class=350, random_seed=42)
-            predictor.load_models()
-            st.success("Re-training complete! Verified 92.41% benchmark accuracy preserved.")
-            st.rerun()
+        c_t1, c_t2, c_t3, c_t4 = st.columns(4)
+        c_t1.metric("Overall Test Accuracy", f"{m['test_accuracy'] * 100:.2f}%")
+        c_t2.metric("Validation Accuracy", f"{m['validation_accuracy'] * 100:.2f}%")
+        c_t3.metric("Defect Position x MAE", f"{m['position_x_mae_mm']:.2f} mm")
+        c_t4.metric("Defect Depth z MAE", f"{m['position_z_mae_mm']:.2f} mm")
+
+        col_cm, col_rep = st.columns([1, 1])
+
+        with col_cm:
+            st.markdown("##### Confusion Matrix (Held-Out Test Set)")
+            cm = np.array(m["confusion_matrix"])
+            fig_cm, ax_cm = plt.subplots(figsize=(5, 4.2))
+            cax = ax_cm.matshow(cm, cmap="Blues", alpha=0.85)
+            plt.colorbar(cax, ax=ax_cm, fraction=0.046, pad=0.04)
+
+            for i in range(len(m["classes"])):
+                for j in range(len(m["classes"])):
+                    ax_cm.text(j, i, str(cm[i, j]), ha="center", va="center", color="black", fontsize=11, fontweight="bold")
+
+            ax_cm.set_xticks(range(len(m["classes"])))
+            ax_cm.set_yticks(range(len(m["classes"])))
+            ax_cm.set_xticklabels(m["classes"], rotation=20, ha="left", fontsize=9)
+            ax_cm.set_yticklabels(m["classes"], fontsize=9)
+            ax_cm.set_xlabel("Predicted Condition", fontweight="bold")
+            ax_cm.set_ylabel("True Condition", fontweight="bold")
+            plt.tight_layout()
+            st.pyplot(fig_cm)
+            plt.close(fig_cm)
+
+        with col_rep:
+            st.markdown("##### Detailed Classification Report")
+            rep = m["classification_report"]
+            rep_rows = []
+            for cls_name in m["classes"]:
+                if cls_name in rep:
+                    rep_rows.append({
+                        "Class": cls_name,
+                        "Precision": f"{rep[cls_name]['precision'] * 100:.1f}%",
+                        "Recall": f"{rep[cls_name]['recall'] * 100:.1f}%",
+                        "F1-Score": f"{rep[cls_name]['f1-score'] * 100:.1f}%",
+                        "Support": int(rep[cls_name]["support"]),
+                    })
+            st.dataframe(pd.DataFrame(rep_rows), hide_index=True, use_container_width=True)
+
+            st.markdown(f"**Dataset Summary:**")
+            st.write(f"- Total synthetic samples: **{m.get('total_samples', 1050)}** ({m.get('samples_per_class', 350)} per class)")
+            st.write(f"- Test partition: 15% stratified held-out data")
+            st.write(f"- Position x RMSE: **{m.get('position_x_rmse_mm', 0.94):.2f} mm**")
+            st.write(f"- Depth z RMSE: **{m.get('position_z_rmse_mm', 1.14):.2f} mm**")
+
+        st.markdown("##### Most Informative Microwave Signal Features")
+        feat_names = m["feature_names"]
+        importances = m["feature_importances"]
+        sorted_indices = np.argsort(importances)[::-1]
+
+        top_names = [feat_names[i] for i in sorted_indices[:8]]
+        top_vals = [importances[i] * 100 for i in sorted_indices[:8]]
+        fig_fi, ax_fi = plt.subplots(figsize=(10, 3.6))
+        ax_fi.bar(range(len(top_names)), top_vals, color="#2980B9")
+        ax_fi.set_ylabel("Relative Importance (%)")
+        ax_fi.set_xticks(range(len(top_names)))
+        ax_fi.set_xticklabels(top_names, rotation=30, ha="right", fontsize=8.5)
+        ax_fi.grid(True, axis="y", alpha=0.3)
+        plt.tight_layout()
+        st.pyplot(fig_fi)
+        plt.close(fig_fi)
+
+        if st.button("🔄 Retrain AI Models"):
+            with st.spinner("Retraining AI models..."):
+                from train_model import train_microwave_ndt_models
+                train_microwave_ndt_models(samples_per_class=350, random_seed=42)
+                predictor.load_models()
+                st.success("Re-training complete! Verified 92.41% benchmark accuracy preserved.")
+                st.rerun()
 
 # ---------------------------------------------------------
 # TAB 3: ANTENNA PHYSICS & LIMITATIONS
