@@ -165,7 +165,7 @@ with st.sidebar.expander("🧱 B. Material & Defect Ground Truth", expanded=True
         sim_defect_z = 6.5  # Fixed default defect depth locked at 6.5 mm
 
         if sim_defect_type == "Internal crack":
-            sim_defect_w = st.slider("Crack Width (mm)", 2.0, 12.0, 6.0, 0.5,
+            sim_defect_w = st.slider("Crack Width (mm)", 2.0, 7.0, 5.0, 0.5,
                                      help="Planar crack/delamination lateral size.")
         else:
             sim_defect_w = st.slider("Void Diameter (mm)", 3.0, 16.0, 8.0, 0.5,
