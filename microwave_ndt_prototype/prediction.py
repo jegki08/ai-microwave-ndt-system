@@ -13,9 +13,14 @@ scan data to predict:
 """
 
 import os
+import sys
 import joblib
 import numpy as np
 from typing import Dict, Any, Optional, Tuple
+
+_CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _CURRENT_DIR not in sys.path:
+    sys.path.insert(0, _CURRENT_DIR)
 
 from signal_simulator import (
     CLASSES,
@@ -29,7 +34,19 @@ class MicrowaveNDTPredictor:
 
     def __init__(self, models_dir: Optional[str] = None):
         if models_dir is None:
-            models_dir = os.path.join(os.path.dirname(__file__), "models")
+            candidates = [
+                os.path.join(os.path.dirname(os.path.abspath(__file__)), "models"),
+                os.path.join(os.getcwd(), "microwave_ndt_prototype", "models"),
+                os.path.join(os.getcwd(), "models"),
+                os.path.abspath("models"),
+                os.path.abspath("microwave_ndt_prototype/models"),
+            ]
+            for cand in candidates:
+                if os.path.isdir(cand) and os.path.exists(os.path.join(cand, "defect_classifier.joblib")):
+                    models_dir = cand
+                    break
+            if models_dir is None:
+                models_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "models")
         self.models_dir = models_dir
 
         self.classifier = None
